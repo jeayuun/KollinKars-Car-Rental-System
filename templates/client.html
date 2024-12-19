@@ -1,0 +1,269 @@
+{% extends "index.html" %}
+
+{% block title %}
+    Dashboard: Book Rentals
+{% endblock %}
+
+{% block content %}
+<div class="logo">
+    <img src="/static/image/logov2.png" alt="KollinKars Logo" width="85%">
+    <div class="close">
+        <span class="material-symbols-outlined">close</span>
+    </div>
+</div>
+<nav>
+    <ul>
+        <li>
+            <a href="/client" id="dashboard-link" class="fill" style="padding-left: 5px;">
+                <span class="material-symbols-outlined full">
+                    bookmark_add
+                </span>
+                <span class="title-full">
+                    Book Vehicle
+                </span>
+            </a>
+        </li>
+        <li>
+            <a href="/bookings" id="sql-link" style="padding-left: 5px;">
+                <span class="material-symbols-outlined">
+                    beenhere
+                </span>
+                <span class="title">
+                    Current Bookings
+                </span>
+            </a>
+        </li>
+        <li>
+            <a href="/manage" id="edit-link" style="padding-left: 5px;">
+                <span class="material-symbols-outlined">
+                    build
+                </span>
+                <span class="title">
+                    Manage Bookings
+                </span>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+{% endblock %}
+
+{% block additional_content %}
+<div class="container right" style="background: rgba(255, 255, 255, 1); margin-right: 0px; width: 98%; gap: 10px;">
+    <h1 class="text-center bowlby-one-regular" style="padding-top: 30px; margin-bottom: 0px;">Welcome to KollinKars!</h1>
+    <button style="width:50%; color:white; border-radius:30px; margin-bottom: 0px;">
+        Explore available vehicles below
+    </button>
+    <div class="vehicle-list" style="max-height: 700px; overflow-y: auto; margin-top: 20px;">
+        <!-- Check if vehicles are passed and render them -->
+        {% if vehicles %}
+            {% for vehicle in vehicles %}
+            <div class="accordion-item">
+                <h2 class="accordion-header">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#vehicle-{{ vehicle.Vehicle_ID }}" aria-expanded="false" aria-controls="vehicle-{{ vehicle.Vehicle_ID }}" style="height: 100%;">
+                        <div class="vehicle-image">
+                            <img src="/static/image/cars/{{ vehicle.Vehicle_Name | lower | replace(' ', '_') }}.png" alt="{{ vehicle.Vehicle_Name }}" style="width: 200px;">
+                        </div>
+                        <div class="vehicle-info">
+                            <span>{{ vehicle.Vehicle_Name }}</span>
+                            <p>{{ vehicle.Vehicle_Price }} PHP | Seats: {{ vehicle.Seats }}</p>
+                        </div>
+                    </button>
+                </h2>
+                <div id="vehicle-{{ vehicle.Vehicle_ID }}" class="accordion-collapse collapse">
+                    <div class="accordion-body">
+                        <div class="vehicle-info">
+                            <div class="booking-dates" style="margin-left: 35px; margin-right: 35px; margin-top: 0px;">
+                                <label for="start-date-{{ vehicle.Vehicle_ID }}" style="color: #403e52;">Rental Start Date:</label>
+                                <label for="end-date-{{ vehicle.Vehicle_ID }}" style="color: #403e52;">Rental End Date:</label>
+                            </div>
+                            <div class="booking-dates">
+                                <input type="date" id="start-date-{{ vehicle.Vehicle_ID }}">
+                                <input type="date" id="end-date-{{ vehicle.Vehicle_ID }}">
+                            </div>
+                            <p class="text-center" style="margin-bottom: 0rem;">Rental Packages (Insurance included)</p>
+                            <div class="insurance-options">
+                                <button class="insurance-btn" data-vehicle-id="{{ vehicle.Vehicle_ID }}" data-insurance="bronze" data-price="{{ vehicle.Vehicle_Price }}">Basic - {{ vehicle.Vehicle_Price }} PHP/day</button>
+                                <button class="insurance-btn" data-vehicle-id="{{ vehicle.Vehicle_ID }}" data-insurance="silver" data-price="{{ vehicle.Vehicle_Price + 300 }}">Silver - {{ vehicle.Vehicle_Price + 300 }} PHP/day</button>
+                                <button class="insurance-btn" data-vehicle-id="{{ vehicle.Vehicle_ID }}" data-insurance="gold" data-price="{{ vehicle.Vehicle_Price + 500 }}">Gold - {{ vehicle.Vehicle_Price + 500 }} PHP/day</button>
+                            </div>
+
+                            <p style="margin-bottom: 10px;">Total Price: <span>PHP  </span><span id="total-price-{{ vehicle.Vehicle_ID }}">0</span></p>
+                            <div class="text-center">
+                                <button class="book-btn" data-vehicle-id="{{ vehicle.Vehicle_ID }}" style="background-color: green; color: white; padding: 10px; border: none; border-radius: 5px; display: none;">Book Now</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>{{ message }}</p>  <!-- Show message if no vehicles are available -->
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Accordion Button Logic
+        const accordionButtons = document.querySelectorAll('.accordion-button');
+        accordionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const expanded = button.getAttribute('aria-expanded') === 'true';
+                button.setAttribute('aria-expanded', !expanded);
+            });
+        });
+
+        // Insurance and Total Price Calculation
+        const insuranceButtons = document.querySelectorAll('.insurance-btn');
+        insuranceButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const vehicleId = button.getAttribute('data-vehicle-id');
+                const packagePrice = parseFloat(button.getAttribute('data-price'));
+                const startDate = document.getElementById(`start-date-${vehicleId}`).value;
+                const endDate = document.getElementById(`end-date-${vehicleId}`).value;
+
+                if (startDate && endDate) {
+                    const start = new Date(startDate);
+                    const end = new Date(endDate);
+
+                    if (start >= end) {
+                        alert('End date must be after the start date.');
+                        return;
+                    }
+
+                    const days = (end - start) / (1000 * 3600 * 24);
+                    if (days <= 0) {
+                        alert('Please select a valid rental duration.');
+                        return;
+                    }
+
+                    // Update total price
+                    const totalPrice = days * packagePrice;
+                    document.getElementById(`total-price-${vehicleId}`).textContent = totalPrice.toFixed(2);
+
+                    // Show Book Now button
+                    const bookButton = document.querySelector(`.book-btn[data-vehicle-id="${vehicleId}"]`);
+                    if (bookButton) {
+                        bookButton.style.display = 'inline-block';
+                    }
+                } else {
+                    alert('Please select both start and end dates.');
+                }
+            });
+        });
+
+        // Booking Logic
+        const bookButtons = document.querySelectorAll('.book-btn');
+        bookButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const vehicleId = button.getAttribute('data-vehicle-id');
+                const startDate = document.getElementById(`start-date-${vehicleId}`).value;
+                const endDate = document.getElementById(`end-date-${vehicleId}`).value;
+                const totalPrice = document.getElementById(`total-price-${vehicleId}`).textContent;
+
+                // Validate payload
+                if (!startDate || !endDate || totalPrice === "0") {
+                    alert('Please ensure all fields are completed.');
+                    return;
+                }
+
+                // Send Booking Request
+                fetch('/book_vehicle', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vehicle_id: vehicleId,
+                        rental_startdate: startDate,
+                        rental_enddate: endDate,
+                        total_price: parseFloat(totalPrice),
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Vehicle booked successfully!');
+                            location.href = '/bookings'; // Redirect to bookings
+                        } else {
+                            alert(`Booking failed: ${data.error || 'Unknown error'}`);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error:', err);
+                        alert('An error occurred while processing the booking. Please try again.');
+                    });
+            });
+        });
+    });
+</script>
+
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap');
+
+    button {
+        margin-top: 0px;
+
+    }
+    .accordion-item button {
+        max-height: 130px;
+        margin-bottom: 0px;
+    }
+    .accordion-button:hover {
+        background: #292b49;
+    }
+
+    .accordion-button:hover .vehicle-info span {
+        color: white;
+    }
+    .vehicle-info span, label {
+        font-weight: 900;
+        font-size: 1.2rem;
+        color: black;
+    }
+    .vehicle-info label {
+        font-size: 1rem;
+        color: black;
+        margin: 0px;
+    }
+    .vehicle-info input {
+        width: 40%;
+        margin: 0px auto;
+        border-radius: 30px;
+    }
+    .vehicle-info p {
+        margin-top: 5px;
+        font-size: .9rem;
+        color: gray;
+    }
+    .vehicle-image {
+        margin-right: 20px;
+    }
+    .vehicle-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);  /* 2 columns */
+        gap: 10px;
+    }
+    .insurance-options, .booking-dates {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+    }
+    .insurance-options button {
+        flex: 1;
+        margin: 0 5px;
+        padding: 10px;
+        font-size: 1rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        height: 80px;
+        background: #545795;
+    }
+    @media (max-width: 768px) {
+        .vehicle-list {
+            grid-template-columns: 1fr;  /* 1 column on smaller screens */
+        }
+    }
+</style>
+
+{% endblock %}
